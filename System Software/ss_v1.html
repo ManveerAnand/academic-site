@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unix Process Concepts</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --secondary-color: #1e40af;
+            --accent-color: #dbeafe;
+            --text-color: #1f2937;
+            --code-bg: #f1f5f9;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+        }
+        
+        .code-block {
+            background-color: var(--code-bg);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin: 1.5rem 0;
+        }
+        
+        .process-diagram {
+            width: 100%;
+            height: 300px;
+            margin: 2rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .process {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            position: absolute;
+            transition: all 0.5s ease;
+        }
+        
+        .process-parent {
+            background-color: var(--primary-color);
+            color: white;
+            left: 50%;
+            top: 30px;
+            transform: translateX(-50%);
+        }
+        
+        .process-child {
+            background-color: var(--secondary-color);
+            color: white;
+            left: 50%;
+            top: 180px;
+            transform: translateX(-50%);
+        }
+        
+        .process-arrow {
+            position: absolute;
+            top: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #64748b;
+            font-size: 2rem;
+        }
+        
+        .toc-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.25rem 0;
+            display: block;
+            transition: all 0.2s ease;
+        }
+        
+        .toc-link:hover {
+            color: var(--secondary-color);
+            padding-left: 0.5rem;
+        }
+        
+        .section-title {
+            color: var(--primary-color);
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+        
+        .section-title::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            bottom: -0.5rem;
+            width: 50px;
+            height: 4px;
+            background-color: var(--primary-color);
+            border-radius: 2px;
+        }
+        
+        .signal-visual {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 2rem 0;
+        }
+        
+        .signal-box {
+            width: 150px;
+            height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--accent-color);
+            border-radius: 0.5rem;
+            font-weight: bold;
+            position: relative;
+        }
+        
+        .signal-arrow {
+            font-size: 2rem;
+            color: #64748b;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+        
+        th, td {
+            border: 1px solid #e5e7eb;
+            padding: 0.75rem;
+            text-align: left;
+        }
+        
+        th {
+            background-color: var(--accent-color);
+            font-weight: 600;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+        
+        .tip-box {
+            background-color: #dbeafe;
+            border-left: 4px solid var(--primary-color);
+            padding: 1rem;
+            margin: 1.5rem 0;
+            border-radius: 0 0.5rem 0.5rem 0;
+        }
+        
+        .warning-box {
+            background-color: #fee2e2;
+            border-left: 4px solid #ef4444;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            border-radius: 0 0.5rem 0.5rem 0;
+        }
+        
+        .zombie-visual {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 2rem 0;
+            gap: 2rem;
+        }
+        
+        .zombie-process {
+            width: 150px;
+            height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .code-header {
+            background-color: #334155;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem 0.5rem 0 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .animated-arrow {
+            animation: move-arrow 2s infinite;
+        }
+        
+        @keyframes move-arrow {
+            0%, 100% {
+                transform: translateX(0);
+            }
+            50% {
+                transform: translateX(10px);
+            }
+        }
+        
+        .header-nav {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: white;
+            box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06);
+        }
+        
+        .active-section {
+            color: var(--secondary-color);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="header-nav py-4 bg-white">
+        <div class="container mx-auto px-4 md:px-6 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-blue-600"><i class="fas fa-terminal mr-2"></i>Unix Process Concepts</h1>
+            <nav class="hidden md:block">
+                <ul class="flex space-x-6">
+                    <li><a href="#signals" class="hover:text-blue-600 transition">Signals</a></li>
+                    <li><a href="#forking" class="hover:text-blue-600 transition">Forking</a></li>
+                    <li><a href="#execing" class="hover:text-blue-600 transition">Execing</a></li>
+                    <li><a href="#termination" class="hover:text-blue-600 transition">Termination</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 md:px-6 py-8">
+        <!-- Introduction Section -->
+        <section class="mb-12">
+            <h2 class="text-3xl font-bold mb-4">Understanding Unix Process Concepts</h2>
+            <p class="text-lg text-gray-700 mb-6">
+                Unix/Linux systems rely heavily on processes for their operation. Understanding how processes work, how they communicate, 
+                and how they are managed is fundamental to Unix/Linux programming. This blog explores key process-related concepts 
+                including signals, forking, execing, and process termination.
+            </p>
+            
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h3 class="text-xl font-semibold mb-4">Table of Contents</h3>
+                <ul class="space-y-2">
+                    <li>
+                        <a href="#signals" class="toc-link">1. Signals: The Unix Way of Inter-Process Communication</a>
+                        <ul class="pl-6 space-y-1 mt-1">
+                            <li><a href="#signals-intro" class="toc-link text-sm">Understanding Signals</a></li>
+                            <li><a href="#signals-handling" class="toc-link text-sm">Signal Handling</a></li>
+                            <li><a href="#signals-blocking" class="toc-link text-sm">Signal Blocking & Pending</a></li>
+                            <li><a href="#signals-practical" class="toc-link text-sm">Practical Examples</a></li>
+                        </ul>
+                    </li>
+                    <li>
+                        <a href="#forking" class="toc-link">2. Forking: Creating Child Processes</a>
+                        <ul class="pl-6 space-y-1 mt-1">
+                            <li><a href="#forking-basics" class="toc-link text-sm">Fork Basics</a></li>
+                            <li><a href="#forking-return" class="toc-link text-sm">Return Values</a></li>
+                            <li><a href="#forking-examples" class="toc-link text-sm">Fork Examples</a></li>
+                        </ul>
+                    </li>
+                    <li>
+                        <a href="#execing" class="toc-link">3. Execing: Loading and Running Programs</a>
+                        <ul class="pl-6 space-y-1 mt-1">
+                            <li><a href="#execing-basics" class="toc-link text-sm">Exec Basics</a></li>
+                            <li><a href="#execing-examples" class="toc-link text-sm">Practical Examples</a></li>
+                            <li><a href="#fork-exec" class="toc-link text-sm">The Fork-Exec Pattern</a></li>
+                        </ul>
+                    </li>
+                    <li>
+                        <a href="#termination" class="toc-link">4. Process Termination & Zombies</a>
+                        <ul class="pl-6 space-y-1 mt-1">
+                            <li><a href="#termination-basics" class="toc-link text-sm">Process Termination</a></li>
+                            <li><a href="#reaping" class="toc-link text-sm">Reaping Children</a></li>
+                            <li><a href="#zombies" class="toc-link text-sm">Zombie Processes</a></li>
+                            <li><a href="#orphans" class="toc-link text-sm">Orphaned Processes</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Signals Section -->
+        <section id="signals" class="mb-20">
+            <h2 class="text-3xl font-bold section-title">Signals: The Unix Way of Inter-Process Communication</h2>
+            
+            <div id="signals-intro" class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4">Understanding Signals</h3>
+                <p class="mb-4">
+                    Signals in Unix/Linux are software interrupts that provide a mechanism for handling asynchronous events. 
+                    They tell a process that some event has occurred and need to be handled.
+                </p>
+                
+                <div class="tip-box">
+                    <strong>What is a signal?</strong> A signal is a notification sent to a process to indicate that an event has occurred. 
+                    Signals can originate from the kernel, other processes, or even from the process itself.
+                </div>
+                
+                <p class="mb-4">When a signal is sent to a process, the process can respond in one of three ways:</p>
+                <ul class="list-disc pl-8 mb-6 space-y-2">
+                    <li><strong>Ignore the signal</strong> - The process can choose to ignore the signal completely (except for SIGKILL and SIGSTOP, which cannot be ignored)</li>
+                    <li><strong>Execute a signal handler</strong> - The process can define a custom function to handle the signal</li>
+                    <li><strong>Let the default action occur</strong> - Each signal has a default action, such as terminating the process</li>
+                </ul>
+                
+                <h4 class="text-xl font-semibold mb-3">Common Signals and Their Default Actions</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Signal ID</th>
+                            <th>Name</th>
+                            <th>Default Action</th>
+                            <th>Corresponding Event</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>2</td>
+                            <td>SIGINT</td>
+                            <td>Terminate</td>
+                            <td>Keyboard interrupt (Ctrl+C)</td>
+                        </tr>
+                        <tr>
+                            <td>9</td>
+                            <td>SIGKILL</td>
+                            <td>Terminate</td>
+                            <td>Kill program</td>
+                        </tr>
+                        <tr>
+                            <td>11</td>
+                            <td>SIGSEGV</td>
+                            <td>Terminate & Dump</td>
+                            <td>Segmentation violation</td>
+                        </tr>
+                        <tr>
+                            <td>14</td>
+                            <td>SIGALRM</td>
+                            <td>Terminate</td>
+                            <td>Timer signal</td>
+                        </tr>
+                        <tr>
+                            <td>18</td>
+                            <td>SIGCHLD</td>
+                            <td>Ignore</td>
+                            <td>Child stopped or terminated</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <p class="mt-4">
+                    Signals between 1 and 31 are standard Unix signals. You can see a more complete list of signals on your Unix/Linux 
+                    system by typing <code>man 7 signal</code> in the terminal.
+                </p>
+            </div>
+            
+            <div id="signals-handling" class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4">Signal Handling</h3>
+                
+                <p class="mb-4">
+                    To control how a program responds to signals, we can define custom signal handlers. A signal handler is a function 
+                    that executes when a specific signal is received.
+                </p>
+                
+                <p class="mb-4">
+                    The <code>signal()</code> function is used to establish a signal handler:
+                </p>
+                
+                <div class="mb-2">
+                    <div class="code-header">signal() Function Definition</div>
+                    <div class="code-block">
+typedef void (*handler_t)(int);
+
+handler_t signal(int signum, handler_t handler)
+                    </div>
+                </div>
+                
+                <p class="mb-4">
+                    This function takes two parameters:
+                </p>
+                <ul class="list-disc pl-8 mb-6 space-y-2">
+                    <li><strong>signum</strong> - The signal number to handle</li>
+                    <li><strong>handler</strong> - A pointer to the function that will handle the signal</li>
+                </ul>
+                
+                <p class="mb-4">
+                    The handler can be:
+                </p>
+                <ul class="list-disc pl-8 mb-6 space-y-2">
+                    <li><strong>A user-defined function</strong> - Custom behavior when the signal is received</li>
+                    <li><strong>SIG_IGN</strong> - Tells the system to ignore the signal</li>
+                    <li><strong>SIG_DFL</strong> - Tells the system to use the default action for the signal</li>
+                </ul>
+                
+                <div>
+                    <div class="code-header">Example: Basic Signal Handler</div>
+                    <div class="code-block">
+/* Handler for SIGINT, caused by Ctrl-C at keyboard. */
+void handle_sigint(int sig) {
+    printf("Caught signal %d\n", sig);
+}
+
+int main() {
+    signal(SIGINT, handle_sigint);
+    
+    while (1) {
+        /* System call to wait for a signal to arrive. */
+        pause();
+    }
+    
+    return 0;
+}
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    In this example, when the user presses Ctrl+C, instead of terminating (the default action for SIGINT), 
+                    the program will print "Caught signal 2" and continue running.
+                </p>
+                
+                <div class="signal-visual">
+                    <div class="signal-box">User<br>Ctrl+C</div>
+                    <div class="signal-arrow animated-arrow"><i class="fas fa-arrow-right"></i></div>
+                    <div class="signal-box">Process<br>handle_sigint()</div>
+                </div>
+                
+                <h4 class="text-xl font-semibold mb-3">Using the kill() Function</h4>
+                <p class="mb-4">
+                    The <code>kill()</code> function allows a process to send signals to other processes:
+                </p>
+                
+                <div>
+                    <div class="code-header">kill() Function Definition</div>
+                    <div class="code-block">
+int kill(pid_t pid, int signal);
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    Parameters:
+                </p>
+                <ul class="list-disc pl-8 mb-6 space-y-2">
+                    <li><strong>pid</strong> - The process ID of the destination process</li>
+                    <li><strong>signal</strong> - The type of signal to send</li>
+                </ul>
+                
+                <div>
+                    <div class="code-header">Example: Using kill()</div>
+                    <div class="code-block">
+int main() {
+    int stat;
+    pid_t pid;
+    
+    if ((pid = fork()) == 0) {
+        while(1); // Child process runs infinitely
+    } 
+    else {
+        kill(pid, SIGINT); // Parent sends SIGINT to child
+        wait(&stat);
+        
+        if (WIFSIGNALED(stat)) {
+            psignal(WTERMSIG(stat), "Child term due to");
+        }
+    }
+}
+                    </div>
+                </div>
+            </div>
+            
+            <div id="signals-blocking" class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4">Signal Blocking & Pending</h3>
+                
+                <p class="mb-4">
+                    Unix/Linux systems maintain two important bit-vectors for each process related to signal handling:
+                </p>
+                
+                <ul class="list-disc pl-8 mb-6 space-y-2">
+                    <li>
+                        <strong>Pending Bit-vector</strong> - Tracks which signals have been sent to the process but not yet delivered
+                        <ul class="list-circle pl-6 mt-2">
+                            <li>Each signal type has a bit in this vector</li>
+                            <li>If a signal is sent to a process but hasn't been delivered, its bit is set</li>
+                            <li>If a signal is already pending and sent again, the second signal is dropped</li>
+                        </ul>
+                    </li>
+                    <li class="mt-3">
+                        <strong>Blocked Bit-vector</strong> - Indicates which signals the process is currently blocking
+                        <ul class="list-circle pl-6 mt-2">
+                            <li>If a signal's bit is set in this vector, it won't be delivered</li>
+                            <li>A signal can be both pending and blocked simultaneously</li>
+                        </ul>
+                    </li>
+                </ul>
+                
+                <div class="warning-box">
+                    <strong>Important Note:</strong> The kernel automatically blocks a signal type when its handler is being executed.
+                    This means that if multiple signals of the same type arrive while the handler is running, only one additional signal 
+                    will be pending, and any others will be dropped.
+                </div>
+                
+                <p class="mb-4">
+                    This behavior has important implications for writing signal handlers:
+                </p>
+                
+                <ul class="list-disc pl-8 mb-6 space-y-2">
+                    <li>Signals cannot be used to count the exact number of occurrences of an event</li>
+                    <li>If a process might receive multiple signals of the same type, the handler should be written to handle as many 
+                        events as possible when it runs</li>
+                </ul>
+                
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h4 class="text-xl font-semibold mb-3">Signal Handling Sequence</h4>
+                    <ol class="list-decimal pl-8 space-y-2">
+                        <li>Signal X is sent to a process</li>
+                        <li>The process's handler for signal X begins executing</li>
+                        <li>Signal X is automatically blocked during handler execution</li>
+                        <li>If another signal X arrives during this time, it becomes pending</li>
+                        <li>When the handler returns, signal X is unblocked</li>
+                        <li>If a signal X is pending, it will now be delivered</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div id="signals-practical" class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4">Practical Examples</h3>
+                
+                <h4 class="text-xl font-semibold mb-3">Example 1: Creating a Timer with SIGALRM</h4>
+                <p class="mb-4">
+                    The <code>alarm()</code> function can be used to schedule a SIGALRM signal after a specified number of seconds:
+                </p>
+                
+                <div>
+                    <div class="code-header">Using alarm() with a Signal Handler</div>
+                    <div class="code-block">
+/* Print a message, then request another SIGALRM. */
+void handle_sigalrm(int sig) {
+    printf("Hello!\n");
+    alarm(1); /* Request another SIGALRM in 1 second. */
+}
+
+/* User typed Ctrl-C. Taunt them. */
+void handle_sigint(int sig) {
+    printf("Ha ha, can't kill me!\n");
+}
+
+int main() {
+    signal(SIGINT, handle_sigint);
+    signal(SIGALRM, handle_sigalrm);
+    alarm(1); /* Request a SIGALRM in 1 second. */
+
+    while (1) {
+        pause(); /* Gentle infinite loop. */
+    }
+    
+    return 0;
+}
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    This program prints "Hello!" every second and cannot be terminated with Ctrl+C because it catches the SIGINT signal.
+                </p>
+                
+                <h4 class="text-xl font-semibold mb-3 mt-8">Example 2: Handling Child Process Termination</h4>
+                <p class="mb-4">
+                    When a child process terminates, the kernel sends a SIGCHLD signal to its parent. By default, this signal is ignored, 
+                    but we can set up a handler to reap zombie child processes:
+                </p>
+                
+                <div>
+                    <div class="code-header">SIGCHLD Handler (Incorrect Implementation)</div>
+                    <div class="code-block">
+/* Handle SIGCHLD signals. */
+void handle_sigchld(int sig) {
+    pid_t pid;
+    int status;
+    
+    pid = wait(&status);
+    printf("Reaped child %d\n", pid);
+    sleep(1);
+}
+
+int main() {
+    int i;
+    signal(SIGCHLD, handle_sigchld);
+
+    for (i = 0; i < 3; i++) {
+        if (fork() == 0) {
+            /* Child-process code. */
+            printf("Hello from child %d\n", getpid());
+            sleep(2);
+            exit(0); /* Terminate child */
+        }
+    }
+    
+    /* Parent-process code. */
+    while (1) {
+        pause(); /* Wait for children to terminate. */
+    }
+    
+    return 0;
+}
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    The problem with this implementation is that it only reaps one child process per SIGCHLD signal. Due to signal 
+                    blocking and the non-queuing nature of signals, if multiple children terminate at similar times, some SIGCHLD 
+                    signals could be dropped, leaving zombie processes.
+                </p>
+                
+                <div>
+                    <div class="code-header">SIGCHLD Handler (Correct Implementation)</div>
+                    <div class="code-block">
+void handle_sigchld(int sig) {
+    pid_t pid;
+    int status;
+
+    while (1) {
+        pid = waitpid(-1, &status, WNOHANG);
+        if (pid <= 0) {
+            /* No more zombie children to reap. */
+            break;
+        }
+        printf("Reaped child %d\n", pid);
+    }
+    sleep(1);
+}
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    This corrected version uses <code>waitpid()</code> with the WNOHANG option to reap as many zombie children as possible
+                    without blocking, ensuring no zombies are left behind.
+                </p>
+                
+                <div class="tip-box mt-6">
+                    <strong>Key Lesson:</strong> When writing signal handlers, remember that Unix signals are not queued. 
+                    If multiple signals of the same type arrive while a handler is running, only one will be pending. 
+                    Your handler should be written to handle all possible occurrences of the event it's responding to.
+                </div>
+            </div>
+        </section>
+
+        <!-- Forking Section -->
+        <section id="forking" class="mb-20">
+            <h2 class="text-3xl font-bold section-title">Forking: Creating Child Processes</h2>
+            
+            <div id="forking-basics" class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4">Fork Basics</h3>
+                
+                <p class="mb-4">
+                    Process control is a fundamental aspect of Unix/Linux programming. A process is a running instance of a program, 
+                    and the operating system allows many processes to run concurrently.
+                </p>
+                
+                <p class="mb-4">
+                    One of the most important system calls for process control is <code>fork()</code>, which creates a new process.
+                </p>
+                
+                <div class="tip-box">
+                    <strong>What is fork()?</strong> The fork() system call creates a new process (called the child process) 
+                    that is an exact duplicate of the calling process (the parent process).
+                </div>
+                
+                <p class="mb-4">
+                    When <code>fork()</code> is called, the child process starts with:
+                </p>
+                <ul class="list-disc pl-8 mb-6 space-y-2">
+                    <li>The same program counter (PC)</li>
+                    <li>The same stack pointer (%esp) and base pointer (%ebp)</li>
+                    <li>The same register values</li>
+                    <li>The same open files</li>
+                    <li>A copy of the parent's address space</li>
+                </ul>
+                
+                <div class="process-diagram">
+                    <div class="process process-parent">Parent Process</div>
+                    <div class="process-arrow"><i class="fas fa-arrow-down"></i></div>
+                    <div class="process process-child">Child Process</div>
+                </div>
+                
+                <p class="mb-4">
+                    One of the most important things to understand about <code>fork()</code> is that it returns <strong>twice</strong>: 
+                    once in the parent process and once in the child process. After the fork, both processes continue execution from 
+                    the instruction following the <code>fork()</code> call.
+                </p>
+                
+                <div>
+                    <div class="code-header">Basic Fork Example</div>
+                    <div class="code-block">
+int main() {
+    fork();
+    printf("Hello world!\n");
+    return 0;
+}
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    This simple program will print "Hello world!" twice - once from the parent process and once from the child process.
+                </p>
+            </div>
+            
+            <div id="forking-return" class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4">Return Values and Process Identification</h3>
+                
+                <p class="mb-4">
+                    The <code>fork()</code> system call returns different values in the parent and child processes:
+                </p>
+                
+                <ul class="list-disc pl-8 mb-6 space-y-2">
+                    <li><strong>In the parent process:</strong> fork() returns the process ID (PID) of the newly created child process</li>
+                    <li><strong>In the child process:</strong> fork() returns 0</li>
+                </ul>
+                
+                <p class="mb-4">
+                    This difference in return values allows code to determine whether it's running in the parent or child process:
+                </p>
+                
+                <div>
+                    <div class="code-header">Distinguishing Parent and Child</div>
+                    <div class="code-block">
+void fork0() {
+    if (fork() == 0) {
+        printf("Hello from Child!\n");
+    }
+    else {
+        printf("Hello from Parent!\n");
+    }
+}
+
+int main() {
+    fork0();
+    return 0;
+}
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    In this example, the parent and child processes execute different code paths based on the return value of <code>fork()</code>.
+                </p>
+                
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h4 class="text-xl font-semibold mb-3">Important Points About fork()</h4>
+                    <ul class="list-disc pl-8 space-y-2">
+                        <li>After fork(), both parent and child are separate processes with separate memory spaces</li>
+                        <li>Changes to variables in one process do not affect the other process</li>
+                        <li>The order of execution between parent and child is non-deterministic</li>
+                        <li>Both processes continue execution from the instruction after the fork() call</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <div class="code-header">Memory Separation Example</div>
+                    <div class="code-block">
+void fork1() {
+    int x = 1;
+    
+    if (fork() == 0) {
+        printf("Child has x = %d\n", ++x);
+    }
+    else {
+        printf("Parent has x = %d\n", --x);
+    }
+}
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    This example demonstrates that after fork(), the parent and child have separate copies of variable x. 
+                    The output will be "Parent has x = 0" and "Child has x = 2" (in either order).
+                </p>
+            </div>
+            
+            <div id="forking-examples" class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4">Fork Examples and Process Trees</h3>
+                
+                <p class="mb-4">
+                    Multiple <code>fork()</code> calls can create complex process trees. Let's explore some examples:
+                </p>
+                
+                <div>
+                    <div class="code-header">Two Sequential fork() Calls</div>
+                    <div class="code-block">
+void fork2() {
+    printf("L0\n");
+    fork();
+    printf("L1\n");
+    fork();
+    printf("Bye\n");
+}
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    This function creates a total of 4 processes and prints:
+                </p>
+                <div class="code-block">
+L0     // From the original process
+L1     // From original process and first child
+L1     // (same as above, order may vary)
+Bye    // From all four processes
+Bye
+Bye
+Bye
+                </div>
+                
+                <p class="mt-4">
+                    The process tree looks like:
+                </p>
+                
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6 text-center">
+                    <pre>
+        Original
+        /     \
+    Child1   Child2
+    /    \   /    \
+Child3 Child4 Child5 Child6
+                    </pre>
+                </div>
+                
+                <div>
+                    <div class="code-header">Conditional fork() Example</div>
+                    <div class="code-block">
+void fork4() {
+    printf("L0\n");
+    if (fork() != 0) {
+        printf("L1\n");
+        if (fork() != 0) {
+            printf("L2\n");
+            fork();
+        }
+    }
+    printf("Bye\n");
+}
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    This more complex example creates a different process tree:
+                </p>
+                
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6 text-center">
+                    <pre>
+        Original
+        /     \
+    Child1   Child2
+             /    \
+        Child3  Child4
+                    </pre>
+                </div>
+                
+                <p class="mt-4">
+                    The output will be: "L0", "L1", "L2", and four "Bye" messages (the exact order may vary).
+                </p>
+                
+                <div class="warning-box mt-6">
+                    <strong>Warning:</strong> Uncontrolled fork() calls can lead to a "fork bomb" - an exponential growth in the 
+                    number of processes that can quickly overwhelm a system. Always be careful with fork() in loops or recursive functions.
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h4 class="text-xl font-semibold mb-3">Purpose of fork()</h4>
+                
+                <p class="mb-4">
+                    The fork() system call serves several important purposes in Unix/Linux systems:
+                </p>
+                
+                <ol class="list-decimal pl-8 space-y-2">
+                    <li><strong>Concurrency</strong> - Allows multiple processes to run simultaneously</li>
+                    <li><strong>Process Creation</strong> - Creates new processes to execute tasks</li>
+                    <li><strong>Isolation</strong> - Provides memory and resource isolation between processes</li>
+                    <li><strong>Foundation for exec()</strong> - Works with exec() to start new programs</li>
+                </ol>
+                
+                <p class="mt-4">
+                    While fork() alone creates a duplicate of the existing process, it's often used in combination with exec() 
+                    to start new programs, as we'll see in the next section.
+                </p>
+            </div>
+        </section>
+
+        <!-- Execing Section -->
+        <section id="execing" class="mb-20">
+            <h2 class="text-3xl font-bold section-title">Execing: Loading and Running Programs</h2>
+            
+            <div id="execing-basics" class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4">Exec Basics</h3>
+                
+                <p class="mb-4">
+                    After using <code>fork()</code> to create a child process, we often want the child to run a different program 
+                    rather than continue with the same code. This is where the <code>exec()</code> family of system calls comes in.
+                </p>
+                
+                <div class="tip-box">
+                    <strong>What is exec()?</strong> The exec() system calls replace the current process's memory and state with a 
+                    new program, effectively transforming the process into a different program.
+                </div>
+                
+                <p class="mb-4">
+                    Unlike <code>fork()</code>, which creates a new process, <code>exec()</code> does not create a new process. 
+                    Instead, it overwrites the current process with a new program. The process ID remains the same, but the code, 
+                    data, heap, and stack segments are replaced with those of the new program.
+                </p>
+                
+                <h4 class="text-xl font-semibold mb-3">The execve() Function</h4>
+                <p class="mb-4">
+                    The most fundamental <code>exec()</code> function is <code>execve()</code>:
+                </p>
+                
+                <div>
+                    <div class="code-header">execve() Function Definition</div>
+                    <div class="code-block">
+int execve(char *filename, char *argv[], char *envp[]);
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    Parameters:
+                </p>
+                <ul class="list-disc pl-8 mb-6 space-y-2">
+                    <li><strong>filename</strong> - Path to the executable file to run</li>
+                    <li><strong>argv</strong> - Array of arguments to pass to the new program</li>
+                    <li><strong>envp</strong> - Array of environment variable settings</li>
+                </ul>
+                
+                <p class="mb-4">
+                    There are several variants of the <code>exec()</code> function, including <code>execv()</code>, <code>execl()</code>, 
+                    <code>execle()</code>, <code>execlp()</code>, and <code>execvp()</code>, each with slightly different parameter formats.
+                </p>
+                
+                <div class="warning-box">
+                    <strong>Important:</strong> If exec() succeeds, it never returns to the calling process! The current process is 
+                    completely replaced by the new program. If exec() returns, it means the call failed, and the return value is -1.
+                </div>
+            </div>
+            
+            <div id="execing-examples" class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4">Practical Examples</h3>
+                
+                <div>
+                    <div class="code-header">Basic exec() Example</div>
+                    <div class="code-block">
+int main() {
+    char *args[2];
+    args[0] = "/bin/echo";
+    args[1] = NULL;  // NULL indicates the end of arguments
+    
+    execv("/bin/echo", args);
+    
+    // If execv() returns, it means it failed
+    printf("This line will only execute if execv() fails.\n");
+    return 0;
+}
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    This program simply replaces itself with the <code>/bin/echo</code> command. Note that if <code>execv()</code> 
+                    succeeds, the "This line will only execute..." message will never be printed.
+                </p>
+                
+                <div>
+                    <div class="code-header">Example with Print Before exec()</div>
+                    <div class="code-block">
+int main() {
+    char *args[2];
+    args[0] = "/bin/echo";
+    args[1] = NULL;
+    
+    printf("About to exec from process %d\n", getpid());
+    sleep(1);
+    
+    execv("/bin/echo", args);
+    
+    printf("Done exec-ing ...\n");
+    return 0;
+}
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    In this example, the process prints its PID before executing <code>/bin/echo</code>. The "Done exec-ing..." message 
+                    will only be printed if <code>execv()</code> fails.
+                </p>
+            </div>
+            
+            <div id="fork-exec" class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4">The Fork-Exec Pattern</h3>
+                
+                <p class="mb-4">
+                    In Unix/Linux programming, <code>fork()</code> and <code>exec()</code> are often used together in what's known as 
+                    the "fork-exec pattern." This pattern is the standard way to create and run new programs:
+                </p>
+                
+                <ol class="list-decimal pl-8 mb-6 space-y-2">
+                    <li>Call <code>fork()</code> to create a child process</li>
+                    <li>In the child process, call <code>exec()</code> to run a new program</li>
+                    <li>In the parent process, typically call <code>wait()</code> to wait for the child to complete</li>
+                </ol>
+                
+                <div>
+                    <div class="code-header">Fork-Exec Pattern Example</div>
+                    <div class="code-block">
+int main() {
+    if (fork() == 0) {
+        /* Child process */
+        char *args[2];
+        args[0] = "/bin/ls";
+        args[1] = NULL;
+        
+        execv("/bin/ls", args);
+        exit(0);  /* In case exec fails! */
+    }
+    
+    /* Parent process */
+    wait(NULL);  /* Wait for child to terminate */
+    printf("Done\n");
+    
+    return 0;
+}
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    This example creates a child process that executes the <code>/bin/ls</code> command while the parent waits for it to 
+                    complete. After the child terminates, the parent prints "Done" and exits.
+                </p>
+                
+                <div class="tip-box">
+                    <strong>Note:</strong> It's good practice to call <code>exit()</code> after <code>exec()</code> to ensure the process 
+                    terminates if <code>exec()</code> fails.
+                </div>
+                
+                <h4 class="text-xl font-semibold mb-3 mt-8">Real-World Applications</h4>
+                
+                <p class="mb-4">
+                    The fork-exec pattern is used extensively in Unix/Linux systems:
+                </p>
+                
+                <ul class="list-disc pl-8 mb-6 space-y-2">
+                    <li><strong>Shell Commands</strong> - When you type a command in a shell, the shell uses fork-exec to run it</li>
+                    <li><strong>Service Managers</strong> - Systems like systemd use fork-exec to start system services</li>
+                    <li><strong>Web Servers</strong> - Servers like Apache can fork-exec to handle requests</li>
+                    <li><strong>Process Supervision</strong> - Tools like supervisord use fork-exec to manage child processes</li>
+                </ul>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h4 class="text-xl font-semibold mb-3">Summary of Execing</h4>
+                
+                <ul class="list-disc pl-8 space-y-2">
+                    <li><code>exec()</code> replaces the current process with a new program</li>
+                    <li>If successful, <code>exec()</code> never returns</li>
+                    <li>Process ID remains the same after <code>exec()</code></li>
+                    <li>The fork-exec pattern is the standard way to create and run new programs in Unix/Linux</li>
+                    <li>Various <code>exec()</code> variants provide flexibility in how arguments and environment variables are passed</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Termination Section -->
+        <section id="termination" class="mb-20">
+            <h2 class="text-3xl font-bold section-title">Process Termination & Zombies</h2>
+            
+            <div id="termination-basics" class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4">Process Termination</h3>
+                
+                <p class="mb-4">
+                    Understanding how processes terminate and how the operating system handles terminated processes is crucial for 
+                    proper resource management in Unix/Linux programming.
+                </p>
+                
+                <p class="mb-4">
+                    A process can terminate for one of three reasons:
+                </p>
+                
+                <ul class="list-disc pl-8 mb-6 space-y-2">
+                    <li><strong>It calls exit()</strong> - The process explicitly terminates itself</li>
+                    <li><strong>It returns from main()</strong> - Returning from main() implicitly calls exit() with the return value</li>
+                    <li><strong>It receives a signal</strong> - A signal whose default action is to terminate (e.g., SIGINT, SIGTERM)</li>
+                </ul>
+                
+                <p class="mb-4">
+                    When a process terminates, it produces status information that indicates how it terminated and, if it exited normally, 
+                    its exit status code.
+                </p>
+                
+                <div>
+                    <div class="code-header">exit() Function</div>
+                    <div class="code-block">
+void exit(int status);
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    The <code>exit()</code> function terminates the calling process and returns the specified status to the parent. 
+                    By convention, a status of 0 indicates normal termination, while a non-zero value indicates an error.
+                </p>
+                
+                <div>
+                    <div class="code-header">exit() Example</div>
+                    <div class="code-block">
+void foo() {
+    exit(1);  /* Terminate with error status */
+}
+
+int main() {
+    foo();     /* Program terminates here */
+    return 0;  /* This line is never reached */
+}
+                    </div>
+                </div>
+            </div>
+            
+            <div id="reaping" class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4">Reaping Children</h3>
+                
+                <p class="mb-4">
+                    When a child process terminates, it doesn't disappear completely. Instead, it enters a "terminated" state where it 
+                    still exists in the process table until its parent process "reaps" it by calling <code>wait()</code> or <code>waitpid()</code>.
+                </p>
+                
+                <div class="tip-box">
+                    <strong>What is reaping?</strong> Reaping is the process of cleaning up and removing terminated child processes 
+                    from the process table. The parent process is responsible for reaping its children.
+                </div>
+                
+                <h4 class="text-xl font-semibold mb-3">The wait() Function</h4>
+                
+                <div>
+                    <div class="code-header">wait() Function Definition</div>
+                    <div class="code-block">
+pid_t wait(int *stat_loc);
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    When a process calls <code>wait()</code>:
+                </p>
+                <ul class="list-disc pl-8 mb-6 space-y-2">
+                    <li>If the process has one or more terminated children, <code>wait()</code> reaps one of them (chosen arbitrarily) and returns</li>
+                    <li>If the process has children that are still running but none are terminated, <code>wait()</code> blocks until a child terminates</li>
+                    <li>If the process has no children, <code>wait()</code> returns -1 immediately</li>
+                </ul>
+                
+                <p class="mb-4">
+                    The <code>wait()</code> function returns the process ID of the reaped child. If <code>stat_loc</code> is not NULL, 
+                    information about the child's termination is stored in the location it points to.
+                </p>
+                
+                <div>
+                    <div class="code-header">Basic wait() Example</div>
+                    <div class="code-block">
+int main() {
+    pid_t cpid;
+    
+    if (fork() == 0) {
+        exit(0);  /* Terminate child */
+    }
+    else {
+        cpid = wait(NULL);  /* Reap child */
+        printf("Parent pid = %d\n", getpid());
+        printf("Child pid = %d\n", cpid);
+    }
+    
+    return 0;
+}
+                    </div>
+                </div>
+                
+                <h4 class="text-xl font-semibold mb-3 mt-8">Child Status Information</h4>
+                
+                <p class="mb-4">
+                    The status information provided by <code>wait()</code> and <code>waitpid()</code> includes:
+                </p>
+                <ul class="list-disc pl-8 mb-6 space-y-2">
+                    <li>Whether the child terminated normally or abnormally</li>
+                    <li>If it terminated normally, its exit status code</li>
+                    <li>If it terminated abnormally, the signal that caused termination</li>
+                </ul>
+                
+                <p class="mb-4">
+                    Several macros are used to extract information from the status:
+                </p>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Macro</th>
+                            <th>Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>WIFEXITED(status)</td>
+                            <td>Returns true if the child terminated normally</td>
+                        </tr>
+                        <tr>
+                            <td>WEXITSTATUS(status)</td>
+                            <td>Returns the exit status of the child</td>
+                        </tr>
+                        <tr>
+                            <td>WIFSIGNALED(status)</td>
+                            <td>Returns true if the child terminated due to an uncaught signal</td>
+                        </tr>
+                        <tr>
+                            <td>WTERMSIG(status)</td>
+                            <td>Returns the number of the signal that caused termination</td>
+                        </tr>
+                        <tr>
+                            <td>WIFSTOPPED(status)</td>
+                            <td>Returns true if the child is currently stopped</td>
+                        </tr>
+                        <tr>
+                            <td>WSTOPSIG(status)</td>
+                            <td>Returns the number of the signal that caused the child to stop</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div>
+                    <div class="code-header">Example Using Status Macros</div>
+                    <div class="code-block">
+void check_child_status() {
+    int stat;
+    
+    if (fork() == 0) {
+        exit(1);  /* Child terminates with status 1 */
+    }
+    else {
+        wait(&stat);
+        
+        if (WIFEXITED(stat)) {
+            printf("Exit status: %d\n", WEXITSTATUS(stat));
+        }
+        else if (WIFSIGNALED(stat)) {
+            printf("Signal number: %d\n", WTERMSIG(stat));
+        }
+    }
+}
+                    </div>
+                </div>
+                
+                <h4 class="text-xl font-semibold mb-3 mt-8">The waitpid() Function</h4>
+                
+                <p class="mb-4">
+                    The <code>waitpid()</code> function provides more control over which children to wait for and whether to block:
+                </p>
+                
+                <div>
+                    <div class="code-header">waitpid() Function Definition</div>
+                    <div class="code-block">
+pid_t waitpid(pid_t pid, int *status, int options);
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    Parameters:
+                </p>
+                <ul class="list-disc pl-8 mb-6 space-y-2">
+                    <li><strong>pid</strong> - Specifies which child(ren) to wait for:
+                        <ul class="list-circle pl-6 mt-2">
+                            <li>pid > 0: Wait for the specific child with that PID</li>
+                            <li>pid = -1: Wait for any child (like wait())</li>
+                            <li>pid = 0: Wait for any child in the same process group</li>
+                            <li>pid < -1: Wait for any child in the process group whose ID is -pid</li>
+                        </ul>
+                    </li>
+                    <li><strong>status</strong> - Pointer to store the exit status (same as wait())</li>
+                    <li><strong>options</strong> - Modifies behavior:
+                        <ul class="list-circle pl-6 mt-2">
+                            <li>0: Default behavior (block until a matching child terminates)</li>
+                            <li>WNOHANG: Return immediately if no matching child has terminated</li>
+                            <li>Other options are available for more specialized uses</li>
+                        </ul>
+                    </li>
+                </ul>
+                
+                <div>
+                    <div class="code-header">Using waitpid() with WNOHANG</div>
+                    <div class="code-block">
+void non_blocking_wait() {
+    pid_t cpid;
+    int stat;
+    
+    if (fork() == 0) {
+        printf("Child pid = %d\n", getpid());
+        sleep(3);
+        exit(1);
+    }
+    else {
+        /* Check for terminated children without blocking */
+        while ((cpid = waitpid(-1, &stat, WNOHANG)) == 0) {
+            sleep(1);
+            printf("No terminated children yet\n");
+        }
+        
+        printf("Reaped child %d with exit status: %d\n",
+               cpid, WEXITSTATUS(stat));
+    }
+}
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    This example creates a child that sleeps for 3 seconds, while the parent periodically checks if the child has 
+                    terminated without blocking. Once the child terminates, the parent reaps it and reports its exit status.
+                </p>
+            </div>
+            
+            <div id="zombies" class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4">Zombie Processes</h3>
+                
+                <p class="mb-4">
+                    A zombie process (or defunct process) is a process that has completed execution but still has an entry in the 
+                    process table. This happens when a child process terminates, but its parent has not yet called <code>wait()</code> 
+                    or <code>waitpid()</code> to reap it.
+                </p>
+                
+                <div class="zombie-visual">
+                    <div class="zombie-process bg-blue-600 text-white">
+                        <i class="fas fa-user text-3xl mb-2"></i>
+                        <span>Parent Process</span>
+                        <span class="text-sm mt-1">(Running)</span>
+                    </div>
+                    <i class="fas fa-arrow-right text-3xl text-gray-500"></i>
+                    <div class="zombie-process bg-gray-300">
+                        <i class="fas fa-skull text-3xl mb-2"></i>
+                        <span>Zombie Process</span>
+                        <span class="text-sm mt-1">(Terminated but not reaped)</span>
+                    </div>
+                </div>
+                
+                <p class="mb-4">
+                    Zombie processes are a problem because:
+                </p>
+                <ul class="list-disc pl-8 mb-6 space-y-2">
+                    <li>They consume entries in the process table, which is a limited resource</li>
+                    <li>If many zombies accumulate, they can prevent new processes from being created</li>
+                </ul>
+                
+                <p class="mb-4">
+                    Zombies cannot be killed with signals (even SIGKILL) because they are already "dead" - they're just waiting to be reaped.
+                </p>
+                
+                <div>
+                    <div class="code-header">Creating a Zombie Process</div>
+                    <div class="code-block">
+void create_zombie() {
+    if (fork() == 0) {
+        printf("Terminating Child, PID=%d\n", getpid());
+        exit(0);
+    }
+    else {
+        printf("Running Parent, PID=%d\n", getpid());
+        while (1) {
+            /* Infinite loop without waiting for child */
+        }
+    }
+}
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    In this example, the child process terminates, but the parent never reaps it, resulting in a zombie process. 
+                    You can see this by running the program and using the <code>ps</code> command, which will show the child process 
+                    with a status of <code>Z+</code> or <code>&ltdefunct&gt</code>.
+                </p>
+            </div>
+            
+            <div id="orphans" class="mb-8">
+                <h3 class="text-2xl font-semibold mb-4">Orphaned Processes</h3>
+                
+                <p class="mb-4">
+                    What happens if a parent process terminates before its children? The children become "orphaned processes".
+                </p>
+                
+                <div class="tip-box">
+                    <strong>What is an orphan?</strong> An orphaned process is a process whose parent has terminated without waiting for it.
+                </div>
+                
+                <p class="mb-4">
+                    In Unix/Linux systems, orphaned processes are not left without a parent. Instead, they are "adopted" by the 
+                    init process (PID 1) or another system process that takes on the role of init. This adoptive parent will reap 
+                    the orphaned process when it terminates, preventing it from becoming a zombie indefinitely.
+                </p>
+                
+                <div>
+                    <div class="code-header">Creating Orphaned Processes</div>
+                    <div class="code-block">
+int main() {
+    int i;
+    
+    for (i = 0; i < 3; i++) {
+        if (fork() == 0) {
+            /* Child process */
+            sleep(1);  /* Ensure parent exits first */
+            printf("Child %d (PID=%d) orphaned, new parent: %d\n", 
+                   i, getpid(), getppid());
+            exit(0);
+        }
+    }
+    
+    printf("Parent (PID=%d) exiting\n", getpid());
+    return 0;  /* Parent exits, orphaning children */
+}
+                    </div>
+                </div>
+                
+                <p class="mt-4">
+                    In this example, the parent process creates three children and then exits immediately. The children become orphans 
+                    and are adopted by the init process (or equivalent). Each child prints its new parent PID, which will be the PID of 
+                    the adopting process.
+                </p>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h4 class="text-xl font-semibold mb-3">Summary of Process Termination</h4>
+                
+                <ul class="list-disc pl-8 space-y-2">
+                    <li>Processes can terminate by calling exit(), returning from main(), or receiving a terminating signal</li>
+                    <li>Parents are responsible for reaping their terminated children using wait() or waitpid()</li>
+                    <li>Unreped terminated processes become zombies, consuming resources</li>
+                    <li>If a parent terminates before its children, the children become orphans and are adopted by init</li>
+                    <li>Always ensure your programs properly reap their child processes to avoid zombie accumulation</li>
+                </ul>
+                
+                <p class="mt-4">
+                    Proper management of process termination is crucial for creating robust and resource-efficient Unix/Linux programs, 
+                    especially those that create multiple child processes.
+                </p>
+            </div>
+        </section>
+
+        <!-- Conclusion Section -->
+        <section id="conclusion" class="mb-12">
+            <h2 class="text-3xl font-bold section-title">Conclusion</h2>
+            
+            <p class="mb-4">
+                We've explored the fundamental concepts of Unix/Linux process management:
+            </p>
+            
+            <ul class="list-disc pl-8 mb-6 space-y-2">
+                <li><strong>Signals</strong> provide a way for processes to respond to asynchronous events</li>
+                <li><strong>Forking</strong> creates new processes that are copies of the parent</li>
+                <li><strong>Execing</strong> allows a process to run a new program</li>
+                <li><strong>Process termination and reaping</strong> ensure resources are properly cleaned up</li>
+            </ul>
+            
+            <p class="mb-4">
+                These concepts form the foundation of Unix/Linux process programming and are essential for developing robust system software. 
+                Understanding how processes interact, communicate, and manage resources enables programmers to create efficient, reliable 
+                applications for Unix/Linux environments.
+            </p>
+            
+            <p class="mb-4">
+                Remember these key takeaways:
+            </p>
+            
+            <ul class="list-disc pl-8 mb-6 space-y-2">
+                <li>Always handle signals appropriately for your application's needs</li>
+                <li>Be careful with fork() and manage the parent-child relationship correctly</li>
+                <li>Use the fork-exec pattern to create and run new programs</li>
+                <li>Always reap child processes to prevent zombie accumulation</li>
+                <li>Understand process termination to ensure resources are properly freed</li>
+            </ul>
+            
+            <p class="mb-4">
+                With these concepts mastered, you'll be well-equipped to develop sophisticated system software for Unix/Linux platforms.
+            </p>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="container mx-auto px-4 md:px-6">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <h3 class="text-xl font-semibold mb-2">Unix Process Concepts</h3>
+                    <p class="text-gray-400">A comprehensive guide to Unix/Linux process programming</p>
+                </div>
+                <div>
+                    <ul class="flex space-x-4">
+                        <li><a href="#signals" class="text-gray-400 hover:text-white transition">Signals</a></li>
+                        <li><a href="#forking" class="text-gray-400 hover:text-white transition">Forking</a></li>
+                        <li><a href="#execing" class="text-gray-400 hover:text-white transition">Execing</a></li>
+                        <li><a href="#termination" class="text-gray-400 hover:text-white transition">Termination</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-8 pt-6 border-t border-gray-700 text-center text-gray-400">
+                <p>&copy; 2023 Unix Process Concepts Blog. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Simple scroll spy for active section highlighting
+        document.addEventListener('DOMContentLoaded', function() {
+            const sections = document.querySelectorAll('section[id]');
+            const navLinks = document.querySelectorAll('nav a');
+            
+            function highlightNavigation() {
+                let scrollPosition = window.scrollY;
+                
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop - 100;
+                    const sectionHeight = section.offsetHeight;
+                    const sectionId = section.getAttribute('id');
+                    
+                    if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
+                        navLinks.forEach(link => {
+                            link.classList.remove('text-blue-600');
+                            if (link.getAttribute('href') === '#' + sectionId) {
+                                link.classList.add('text-blue-600');
+                            }
+                        });
+                    }
+                });
+            }
+            
+            window.addEventListener('scroll', highlightNavigation);
+            highlightNavigation();
+        });
+    </script>
+</body>
+</html>
