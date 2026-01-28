@@ -1,0 +1,111 @@
+================================================================================
+                    CRYPTO EXAM - QUICK REFERENCE
+================================================================================
+
+EXAM WORKFLOW: Run exe → Choose menu option → Enter values → Get answer!
+
+================================================================================
+aes.exe - MENU OPTIONS
+================================================================================
+Compile: gcc aes.c -o aes.exe
+Run: .\aes.exe
+
+1. SubBytes
+2. MixColumns ⭐⭐⭐ MOST IMPORTANT!
+3. GF(2^8) Multiplication
+4. Key Expansion (Round 1)
+
+================================================================================
+rsa.exe - MENU OPTIONS
+================================================================================
+Compile: gcc rsa.c -o rsa.exe
+Run: .\rsa.exe
+
+1. Key Generation (p, q, e → n, phi, d)
+2. Encrypt (M, e, n given)
+3. Decrypt (C, d, n given)
+4. Recover p, q from n and phi(n)
+
+================================================================================
+number_theory.exe - MENU OPTIONS
+================================================================================
+Compile: gcc number_theory.c -o number_theory.exe -lm
+Run: .\number_theory.exe
+
+1. Modular Exponentiation (a^b mod n)
+2. Modular Inverse (a^-1 mod n)
+3. GCD
+4. Extended GCD
+5. CRT (2 equations)
+6. Primality Test
+
+================================================================================
+diffie_hellman.exe - MENU OPTIONS
+================================================================================
+Compile: gcc diffie_hellman.c -o diffie_hellman.exe
+Run: .\diffie_hellman.exe
+
+1. Calculate Public Key (g^private mod p)
+2. Calculate Shared Secret
+3. Full DH Exchange (see both sides)
+
+================================================================================
+ecc.exe - MENU OPTIONS
+================================================================================
+Compile: gcc ecc.c -o ecc.exe -lm
+Run: .\ecc.exe
+
+1. Point Addition (P + Q)
+2. Point Doubling (2P)
+
+================================================================================
+des.exe - MENU OPTIONS
+================================================================================
+Compile: gcc des.c -o des.exe
+Run: .\des.exe
+
+1. S-Box Lookup
+2. Feistel Round
+
+================================================================================
+classic_ciphers.exe - MENU OPTIONS
+================================================================================
+Compile: gcc classic_ciphers.c -o classic_ciphers.exe
+Run: .\classic_ciphers.exe
+
+1. Affine Encrypt
+2. Affine Decrypt
+3. Find Affine Decrypt Key
+4. Playfair Encrypt
+
+================================================================================
+finite_fields.exe - MENU OPTIONS
+================================================================================
+Compile: gcc finite_fields.c -o finite_fields.exe
+Run: .\finite_fields.exe
+
+1. Polynomial Multiplication (with modulus)
+2. Polynomial Modular Inverse
+3. Print Polynomial (readable form)
+
+NOTE: Enter polynomials in HEX/BINARY format:
+  - x^3+x^2 = 0b1100 or 0xC
+  - x^8+x^4+x^3+x+1 = 0b100011011 or 0x11B (AES modulus)
+
+================================================================================
+misc.exe - MENU OPTIONS
+================================================================================
+Compile: gcc misc.c -o misc.exe -lm
+Run: .\misc.exe
+
+1. Birthday Paradox
+2. Bayesian Probability
+3. LFSR Period
+
+NOTE: LFSR polynomial conversion (x^n + ... + 1):
+  - x^5+x^2+1 → 2^5 + 2^2 + 2^0 = 32+4+1 = 37
+  - x^8+x^6+x^5+x^4+1 → 256+64+32+16+1 = 369
+
+================================================================================
+PRIORITY: AES MixColumns > RSA > Number Theory > DH > Others
+================================================================================

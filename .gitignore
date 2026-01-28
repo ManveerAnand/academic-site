@@ -1,0 +1,54 @@
+# Executables
+*.exe
+*.out
+*.app
+a.out
+a.exe
+
+# Object files
+*.o
+*.obj
+*.ko
+*.elf
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.a
+*.lib
+*.la
+*.lo
+
+# Build directories
+build/
+output/
+*.dSYM/
+
+# IDE and Editor files
+.vscode/
+.vs/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# PDFs (textbooks and assignments - add selectively if needed)
+*.pdf
+
+# Zip archives
+*.zip
+*.rar
+*.7z
+*.tar.gz
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# OS generated files
+Thumbs.db
+.DS_Store
